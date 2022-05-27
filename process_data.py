@@ -2,7 +2,7 @@ import pandas as pd
 from math import isnan
 
 # Copy paste data from homepage, resolve all connected cells and run this script
-df = pd.read_excel("data2.xlsx", sheet_name='Tabellenblatt1', engine="openpyxl")
+df = pd.read_excel("raw_data.xlsx", sheet_name='Tabellenblatt1', engine="openpyxl")
 column_names = df.columns
 new_names = [x for x in df.iloc[0]]
 df = df.drop(columns=column_names[0], axis=1)
