@@ -35,21 +35,6 @@ for (j in 1:M) {
   names(SPI_counted)[ncol(SPI_counted)] <- names[j]  # Rename
 }
 
-# Define model
-plp.mod <- function() {
-  # Likelihood
-  for (i in 1:N) {
-    y[i] <- lambda[i] * exp(mean1)
-    lambda[i] <- (alpha1/sigma1) * ((i/sigma1)**(alpha1-1))
-  }
-  # Mean until the point T
-  mean1 <- (N/sigma1)**alpha1
-
-    # Prior
-  alpha1 ~ dunif(0, 100)
-  sigma1 ~ dunif(0, 100)
-}
-
 # Provide the data (for `1 mês` series)
 y <- SPI_counted$`1 mês`
 N <- nrow(data)
@@ -61,6 +46,17 @@ plp.mod.params <- c("alpha1", "sigma1")
 # Define starting values
 plp.mod.inits <- function(){
   list("alpha1" = runif(1, min=0, max=100), "sigma1" = runif(1, min=0, max=100))
+}
+
+# Define model
+plp.mod <- function() {
+  # Likelihood
+  for (i in 1:N) {
+    y[i] ~ dnorm((alpha1/sigma1) * ((i/sigma1)**(alpha1-1)) * exp(-(N/sigma1)**alpha1), 1)
+  }
+  # Prior
+  alpha1 ~ dunif(0, 100)
+  sigma1 ~ dunif(0, 100)
 }
 
 # Fit model
