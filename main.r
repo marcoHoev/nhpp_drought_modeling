@@ -39,11 +39,11 @@ for (j in 1:M) {
 plp.mod <- function() {
   # Likelihood
   for (i in 1:N) {
-    y[i] <- lambda[t[i]] * exp(mean1)
-    lambda[i] <- (alpha1/sigma1) * ((t[i]/sigma1)**(alpha1-1))
+    y[i] <- lambda[i] * exp(mean1)
+    lambda[i] <- (alpha1/sigma1) * ((i/sigma1)**(alpha1-1))
   }
   # Mean until the point T
-  mean1 <- (t[N]/sigma1)**alpha1
+  mean1 <- (N/sigma1)**alpha1
 
     # Prior
   alpha1 ~ dunif(0, 100)
@@ -51,13 +51,19 @@ plp.mod <- function() {
 }
 
 # Provide the data (for `1 mês` series)
-t <- SPI_counted$`1 mês`
-plp.mod.data <- list("t")
+y <- SPI_counted$`1 mês`
+N <- nrow(data)
+plp.mod.data <- list("y", "N")
+
+# Parameters to be estimated
 plp.mod.params <- c("alpha1", "sigma1")
+
+# Define starting values
 plp.mod.inits <- function(){
   list("alpha1" = runif(1, min=0, max=100), "sigma1" = runif(1, min=0, max=100))
 }
 
+# Fit model
 plp.mod.fit <- jags(data = plp.mod.data, 
                     inits = plp.mod.inits,
                     parameters.to.save = plp.mod.params,
