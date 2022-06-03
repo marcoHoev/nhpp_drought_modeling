@@ -35,33 +35,49 @@ for (j in 1:M) {
   names(SPI_counted)[ncol(SPI_counted)] <- names[j]  # Rename
 }
 
-# Provide the data (for `1 mês` series)
-y <- SPI_counted$`1 mês`
-N <- nrow(data)
-plp.mod.data <- list("y", "N")
+# Plottinng the count SPI graphs
+plot(stepfun(1:(length(SPI_counted$`1 mês`)-1), SPI_counted$`1 mês`), cex.points = 0.1, lwd=0, main="Count SPI for 1 month")
+plot(stepfun(1:(length(SPI_counted$`3 meses`)-1), SPI_counted$`3 meses`), cex.points = 0.1, lwd=0, main="Count SPI for 3 months")
+plot(stepfun(1:(length(SPI_counted$`6 meses`)-1), SPI_counted$`6 meses`), cex.points = 0.1, lwd=0, main="Count SPI for 6 months")
+plot(stepfun(1:(length(SPI_counted$`12 meses`)-1), SPI_counted$`12 meses`), cex.points = 0.1, lwd=0, main="Count SPI for 12 months")
 
 # Parameters to be estimated
 plp.mod.params <- c("alpha1", "sigma1")
 
 # Define starting values
-plp.mod.inits <- function(){
-  list("alpha1" = runif(1, min=0, max=100), "sigma1" = runif(1, min=0, max=100))
-}
+#plp.mod.inits <- function(){
+# list("alpha1" = runif(1, min=1e-5, max=100),
+#      "sigma1" = runif(1, min=1e-5, max=100))
+#}
+
+# Provide the data (for `1 mês` series)
+y <- SPI_counted$`1 mês`
+plp.mod.data <- list("y", "N")
 
 # Define model
 plp.mod <- function() {
   # Likelihood
   for (i in 1:N) {
-    y[i] ~ dnorm((alpha1/sigma1) * ((i/sigma1)**(alpha1-1)) * exp(-(N/sigma1)**alpha1), 1)
+    y[i] ~ dpois(
+                 # Intensity
+                 (alpha1/sigma1) * ((i/sigma1)**(alpha1-1))
+                 # Mean
+                 * (exp( -(N/sigma1)**alpha1 ) / N)
+                 # Small constant for numerical reasons
+                 + 1e-10
+                 )
   }
   # Prior
-  alpha1 ~ dunif(0, 100)
-  sigma1 ~ dunif(0, 100)
+  alpha1 ~ dunif(1e-5, 100)
+  sigma1 ~ dunif(1e-5, 100)
 }
 
 # Fit model
 plp.mod.fit <- jags(data = plp.mod.data, 
-                    inits = plp.mod.inits,
                     parameters.to.save = plp.mod.params,
-                    n.chains = 3, n.iter = 9000,
-                    n.burnin = 1000, model.file = plp.mod)
+                    #inits = plp.mod.inits,
+                    n.chains = 3, n.iter = 15000,
+                    n.burnin = 10000, model.file = plp.mod)
+plot(plp.mod.fit)
+print(plp.mod.fit)
+
