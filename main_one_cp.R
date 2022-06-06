@@ -1,11 +1,3 @@
-# Mac users: Install the GNU Fortran (gfortran-4.2.3.dmg) library from the CRAN toolsdirectory:http://cran.r-project.org/bin/macosx/tools.3.
-# Install JAGS version 3.4.0 from Martyn Plummer’s repository:http://cran.r-project.org/bin/macosx/tools
-# Install JAGS version 3.4.0 from Martyn Plummer’s repository:http://sourceforge.net/projects/mcmc-jags/files/JAGS/3.x/
-# install.packages("R2jags",dependencies=TRUE,repos="http://cran.us.r-project.org")
-# install.packages("runjags",dependencies=TRUE,repos="http://cran.us.r-project.org")
-# install.packages("MCMCpack",dependencies=TRUE,repos="http://cran.us.r-project.org")
-# install.packages("fitdistrplus", dependencies=TRUE,repos="http://cran.us.r-project.org")
-
 library("R2jags")
 library("readxl")
 library("fitdistrplus")
@@ -13,7 +5,7 @@ library("tidyverse")
 
 set.seed(42)
 
-#setwd("/Users/marco/dev/stochastic_processes/")
+setwd("/Users/marco/dev/stochastic_processes/")
 data <- read_excel("data.xlsx")
 data <- select(data, -1)  # Drop first
 
@@ -42,13 +34,7 @@ plot(stepfun(1:(length(SPI_counted$`6 meses`)-1), SPI_counted$`6 meses`), cex.po
 plot(stepfun(1:(length(SPI_counted$`12 meses`)-1), SPI_counted$`12 meses`), cex.points = 0.1, lwd=0, main="Count SPI for 12 months")
 
 # Parameters to be estimated
-plp.mod.params <- c("alpha1", "sigma1")
-
-# Define starting values
-#plp.mod.inits <- function(){
-# list("alpha1" = runif(1, min=1e-5, max=100),
-#      "sigma1" = runif(1, min=1e-5, max=100))
-#}
+plp.mod.params <- c("alpha1", "sigma1", "alpha2", "sigma2", "tau1")
 
 # Provide the data (for `1 mês` series)
 y <- SPI_counted$`1 mês`
@@ -57,19 +43,33 @@ plp.mod.data <- list("y", "N")
 # Define model
 plp.mod <- function() {
   # Likelihood
-  for (i in 1:N) {
+  # for (i in 1:N) {
+  #   if (i <= tau1) {
+  #     y[i] ~ dpois((i/sigma1)**alpha1)
+  #   } else { # mean = m1(tau) + m2(t) - m2(tau)
+  #     y[i] ~ dpois((tau/sigma1)**alpha1 + (i/sigma2)**alpha2 - (tau/sigma2)**alpha2)
+  #   }
+  # }
+  for (i in 1:floor(tau1)) {
     y[i] ~ dpois((i/sigma1)**alpha1)
   }
+  for (i in ceiling(tau1):N) {
+    y[i] ~ dpois((tau/sigma1)**alpha1 + (i/sigma2)**alpha2 - (tau/sigma2)**alpha2)
+  }
+  
   # Prior
   alpha1 ~ dunif(1e-5, 100)
   sigma1 ~ dunif(1e-5, 100)
+  alpha2 ~ dunif(1e-5, 100)
+  sigma2 ~ dunif(1e-5, 100)
+  tau1 ~ dunif(1, N)
 }
 
 # Fit model
 plp.mod.fit <- jags(data = plp.mod.data, 
                     parameters.to.save = plp.mod.params,
                     #inits = plp.mod.inits,
-                    n.chains = 3, n.iter = 20000,
+                    n.chains = 1, n.iter = 200000,
                     n.burnin = 10000, model.file = plp.mod)
 plot(plp.mod.fit)
 print(plp.mod.fit)
