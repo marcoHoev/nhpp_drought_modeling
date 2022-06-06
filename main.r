@@ -13,7 +13,7 @@ library("tidyverse")
 
 set.seed(42)
 
-setwd("/Users/marcelbraasch/RProjects/stochastic_processes/")
+setwd("/Users/marco/dev/stochastic_processes/")
 data <- read_excel("data.xlsx")
 data <- select(data, -1)  # Drop first
 
@@ -58,14 +58,7 @@ plp.mod.data <- list("y", "N")
 plp.mod <- function() {
   # Likelihood
   for (i in 1:N) {
-    y[i] ~ dpois(
-                 # Intensity
-                 (alpha1/sigma1) * ((i/sigma1)**(alpha1-1))
-                 # Mean
-                 * (exp( -(N/sigma1)**alpha1 ) / N)
-                 # Small constant for numerical reasons
-                 + 1e-10
-                 )
+    y[i] ~ dpois((i/sigma1)**alpha1)
   }
   # Prior
   alpha1 ~ dunif(1e-5, 100)
@@ -76,7 +69,7 @@ plp.mod <- function() {
 plp.mod.fit <- jags(data = plp.mod.data, 
                     parameters.to.save = plp.mod.params,
                     #inits = plp.mod.inits,
-                    n.chains = 3, n.iter = 15000,
+                    n.chains = 3, n.iter = 20000,
                     n.burnin = 10000, model.file = plp.mod)
 plot(plp.mod.fit)
 print(plp.mod.fit)
