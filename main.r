@@ -27,6 +27,7 @@ data <- initalize(dir)
 
 # Set which series to look at
 names <- colnames(data)
+N <- nrow(data)
 current_name <- names[1]
 
 ############################# Create data ###################################
@@ -72,18 +73,26 @@ cumulative_counts <- create_cumulative_counts(data)
 ############################# No change point ###############################
 
 estimate_model_with_no_changepoints <- function(counts, name) {
+  print(N)
   y <- counts[[name]]
   # Define parameters
   plp.mod.params <- c("alpha1", "sigma1") 
   plp.mod.data <- list("y", "N") 
   # Define model
   plp.mod <- function() {
+    # y[1] ~ dpois(mean[1])
+    # mean[1] <- (1/sigma1)^alpha1
+    # for (i in 2:N) {
+    #   mean[i] <- (i/sigma1)^alpha1
+    #   y[i] ~ dpois(mean[i] - mean[i-1])
+    # }
     for (i in 1:N) {
-      y[i] ~ dpois( (i/sigma1)^alpha1 - ((i-1)/sigma1)^alpha1)
+      y[i] ~ dpois((i/sigma1)^alpha1-((i-1)/sigma1)^alpha1)
     }
     alpha1 ~ dunif(1e-5, 100)
     sigma1 ~ dunif(1e-5, 100)
   }
+  
   # Fit model
   plp.mod.fit <- jags(data = plp.mod.data, 
                       parameters.to.save = plp.mod.params,
@@ -134,12 +143,19 @@ plot_data_and_simulation(cumulative_counts[[current_name]], S)
 # Model for one changepoint
 plp.mod <- function() {
   for (i in 1:N) {
-    y[i] ~ dpois(m[i])
-    m[i] <- ifelse(i<=tau1,
-                   (i/sigma1)**alpha1,
-                   (tau1/sigma1)**alpha1
-                   + (i/sigma2)**alpha2
-                   - (tau1/sigma2)**alpha2)
+    y[i] ~ dpois(ifelse(i<=tau1,
+                        (i/sigma1)**alpha1,
+                        (tau1/sigma1)**alpha1
+                        + (i/sigma2)**alpha2
+                        - (tau1/sigma2)**alpha2
+                        )
+                 - ifelse ((i-1)<=tau1,
+                           ((i-1)/sigma1)**alpha1,
+                           (tau1/sigma1)**alpha1
+                           + ((i-1)/sigma2)**alpha2
+                           - (tau1/sigma2)**alpha2
+                        )
+                 )
     }
   alpha1 ~ dunif(1e-5, 100)
   sigma1 ~ dunif(1e-5, 100)
@@ -147,11 +163,86 @@ plp.mod <- function() {
   sigma2 ~ dunif(1e-5, 100)
   tau1 ~ dunif(0,N)
 }
-
+y <- single_counts[[current_name]]
 plp.mod.params <- c("alpha1", "sigma1", "alpha2", "sigma2", "tau1")
 plp.mod.data <- list("y", "N")
 plp.mod.fit <- jags(data = plp.mod.data, 
                     parameters.to.save = plp.mod.params,
-                    n.chains = 3, n.iter = 30000,
+                    n.chains = 3, n.iter = 15000,
                     n.burnin = 10000, model.file = plp.mod)
 print(plp.mod.fit)
+
+# plot_data_and_simulation <- function(c, S) {
+
+extract_param <- function(name) {
+  plp.mod.fit$BUGSoutput[11][["mean"]][[name]]
+}
+
+cum_counts <- cumulative_counts[[current_name]]
+alpha1 <- extract_param("alpha1")
+alpha2 <- extract_param("alpha2")
+sigma1 <- extract_param("sigma1")
+sigma2 <- extract_param("sigma2")
+tau1 <- extract_param("tau1")
+mean_to_tau <- function(t) {
+  (t/sigma1)**alpha1
+  }
+mean_to_end <- function(t) {
+  ((tau1/sigma1)**alpha1
+  + (t/sigma2)**alpha2
+  - (tau1/sigma2)**alpha2)
+}
+
+y_limit <- max(cum_counts)
+
+mean_1_cp <- c()
+for (i in 1:length(cum_counts)) {
+  mean_1_cp <- c(mean_1_cp, ifelse(i <= tau1, mean_to_tau(i), mean_to_end(i)))
+}
+
+plot(0,0,xlim = c(0,N), ylim = c(0,max(y_limit)), type = "n", main = "")
+lines(stepfun(1:(length(cum_counts)-1), cum_counts),cex.points = 0.1, lwd=0, col = "#000000")
+lines(stepfun(1:(length(cum_counts)-1),mean_1_cp), cex.points = 0.1, lwd=0, col = "#FF0000")
+
+# }
+
+############################# 2 change points ################################
+
+plp.mod <- function() {
+  for (i in 1:N) {
+    y[i] ~ dpois(ifelse(i<=tau1,
+                        (i/sigma1)**alpha1,
+                        ifelse(i<=tau2,
+                               (tau1/sigma1)**alpha1
+                               + (i/sigma2)**alpha2
+                               - (tau1/sigma2)**alpha2,
+                               (tau1/sigma1)**alpha1
+                               + (i/sigma3)**alpha3
+                               - (tau2/sigma3)**alpha3
+                               + (tau2/sigma2)**alpha2
+                               - (tau1/sigma2)**alpha2)
+                        )
+                 - ifelse((i-1)<=tau1,
+                          ((i-1)/sigma1)**alpha1,
+                          ifelse((i-1)<=tau2,
+                                 (tau1/sigma1)**alpha1
+                                 + ((i-1)/sigma2)**alpha2
+                                 - (tau1/sigma2)**alpha2,
+                                 (tau1/sigma1)**alpha1
+                                 + ((i-1)/sigma3)**alpha3
+                                 - (tau2/sigma3)**alpha3
+                                 + (tau2/sigma2)**alpha2
+                                 - (tau1/sigma2)**alpha2)
+                 )
+                 )
+  }
+  alpha1 ~ dunif(1e-5, 100)
+  sigma1 ~ dunif(1e-5, 100)
+  alpha2 ~ dunif(1e-5, 100)
+  sigma2 ~ dunif(1e-5, 100)
+  alpha3 ~ dunif(1e-5, 100)
+  sigma3 ~ dunif(1e-5, 100)
+  tau1 ~ dunif(0,N)
+  tau2 ~ dunif(0,N)
+}
+
