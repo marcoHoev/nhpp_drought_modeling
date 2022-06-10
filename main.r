@@ -223,8 +223,8 @@ estimate_model_with_two_changepoints <- function(counts, name, burnin, iteration
     sigma2 ~ dunif(1e-5, 100)
     alpha3 ~ dunif(1e-5, 100)
     sigma3 ~ dunif(1e-5, 100)
-    tau1 ~ dunif(0,N)
-    tau2 ~ dunif(0,N)
+    tau1 ~ dunif(400,600)
+    tau2 ~ dunif(600,N)
   }
   plp.mod.fit <- jags(data = plp.mod.data, 
                       parameters.to.save = plp.mod.params,
@@ -244,38 +244,4 @@ estimate_model_with_two_changepoints <- function(counts, name, burnin, iteration
     "tau1" = tau1, "tau2" = tau2)
 }
 
-params <- estimate_model_with_two_changepoints(single_counts, current_name, 10, 20)
-
-plot_data_and_mean_2_cp <- function(current_cumulative, params) {
-  alpha1 <- params["alpha1"]
-  alpha2 <- params["alpha2"]
-  alpha3 <- params["alpha3"]
-  sigma1 <- params["sigma1"]
-  sigma2 <- params["sigma2"]
-  sigma3 <- params["sigma3"]
-  tau1 <- params["tau1"]
-  tau2 <- params["tau2"]
-  mean_to_tau1 <- function(t) { (t/sigma1)**alpha1 }
-  mean_to_tau2 <- function(t) { ((tau1/sigma1)**alpha1+(t/sigma2)**alpha2-(tau1/sigma2)**alpha2) }
-  mean_to_end <- function(t) { (  (tau1/sigma1)**alpha1
-                                + (t/sigma3)**alpha3
-                                + (tau2/sigma3)**alpha3
-                                + (tau2/sigma2)**alpha2
-                                + (tau1/sigma2)**alpha2) }
-  mean_2_cp <- c()
-  for (i in 1:length(current_cumulative)) {
-    if (i <= tau1) {
-      current_mean <- mean_to_tau1(i)
-    } else if (i <= tau2) {
-      current_mean <- mean_to_tau2(i)
-    } else {
-      current_mean <- mean_to_end(i)
-    }
-    mean_2_cp <- c(mean_2_cp, current_mean)
-  }
-  plot(0,0,xlim = c(0,N), ylim = c(0, max(current_cumulative)), type = "n", main = "")
-  lines(stepfun(1:(length(current_cumulative)-1), current_cumulative),cex.points = 0.1, lwd=0, col = "#000000")
-  lines(stepfun(1:(length(mean_2_cp)-1),mean_2_cp), cex.points = 0.1, lwd=0, col = "#FF0000")
-}
-
-plot_data_and_mean_2_cp(current_cumulative, params)
+params <- estimate_model_with_two_changepoints(single_counts, current_name, 5000, 15000)
