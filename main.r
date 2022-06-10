@@ -21,8 +21,8 @@ initalize <- function(dir) {
   data <- read_excel("./Data/data.xlsx")
   data <- select(data, -1)  # Drop first
 }
-dir <- "/Users/marcelbraasch/RProjects/stochastic_processes/"
-# dir <- "/Users/marco/dev/stochastic_processes/"
+# dir <- "/Users/marcelbraasch/RProjects/stochastic_processes/"
+dir <- "/Users/marco/dev/stochastic_processes/"
 data <- initalize(dir)
 
 # Set which series to look at
@@ -191,7 +191,7 @@ plot_data_and_mean_1_cp <- function(current_cumulative, params) {
   lines(stepfun(1:(length(mean_1_cp)-1),mean_1_cp), cex.points = 0.1, lwd=0, col = "#FF0000")
 }
 
-plot_data_and_mean_1_cp(current_cumulative)
+plot_data_and_mean_1_cp(current_cumulative, params)
 
 ############################# 2 change points ################################
 
@@ -246,7 +246,7 @@ estimate_model_with_two_changepoints <- function(counts, name, burnin, iteration
 
 params <- estimate_model_with_two_changepoints(single_counts, current_name, 10, 20)
 
-plot_data_and_mean_1_cp <- function(current_cumulative, params) {
+plot_data_and_mean_2_cp <- function(current_cumulative, params) {
   alpha1 <- params["alpha1"]
   alpha2 <- params["alpha2"]
   alpha3 <- params["alpha3"]
@@ -278,4 +278,4 @@ plot_data_and_mean_1_cp <- function(current_cumulative, params) {
   lines(stepfun(1:(length(mean_2_cp)-1),mean_2_cp), cex.points = 0.1, lwd=0, col = "#FF0000")
 }
 
-plot_data_and_mean_1_cp(current_cumulative, params)
+plot_data_and_mean_2_cp(current_cumulative, params)
