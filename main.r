@@ -21,8 +21,8 @@ initalize <- function(dir) {
   data <- read_excel("./Data/data.xlsx")
   data <- select(data, -1)  # Drop first
 }
-# dir <- "/Users/marcelbraasch/RProjects/stochastic_processes/"
-dir <- "/Users/marco/dev/stochastic_processes/"
+dir <- "/Users/marcelbraasch/RProjects/stochastic_processes/"
+#dir <- "/Users/marco/dev/stochastic_processes/"
 data <- initalize(dir)
 
 # Set which series to look at
@@ -100,6 +100,21 @@ estimate_model_with_no_changepoints <- function(counts, name, burnin, iterations
 
 params <- estimate_model_with_no_changepoints(single_counts, current_name, burnin = 20000, iterations = 25000)
 
+get_params_0cp_without_recomputing <- function(name) {
+  if (name=="1 mês") {
+    return <- c("alpha1" = 1.0526, "sigma1" = 7.5730)
+  } else if (name=="3 meses") {
+    return <- c("alpha1" = 1.0042, "sigma1" = 6.7560)
+  } else if (name=="6 meses") {
+    return <- c("alpha1" = 1.0498, "sigma1" = 8.8409)
+  } else if (name=="12 meses") {
+    return <- c("alpha1" = 1.2474, "sigma1" = 18.3014)
+  }
+  return
+}
+
+params <- get_params_0cp_without_recomputing(current_name)
+
 # Simulate process by thinning procedure and plot it together with the original data
 # https://stats.stackexchange.com/questions/369288/nonhomogeneous-poisson-process-simulation
 simulate_process_with_no_changepoints <- function(params) {
@@ -174,6 +189,25 @@ estimate_model_with_one_changepoint <- function(counts, name, burnin, iterations
 
 params <- estimate_model_with_one_changepoint(single_counts, current_name, burnin = 10000, iterations = 15000)
 
+get_params_1cp_without_recomputing <- function(name) {
+  if (name=="1 mês") {
+    return <- c("alpha1" = 1.1984, "sigma1" = 11.6938,
+                "alpha2" = 1.2936, "sigma2" = 56.4024, "tau1" = 652.52)
+  } else if (name=="3 meses") {
+    return <- c("alpha1" = 1.0803, "sigma1" = 8.5861,
+                "alpha2" = 1.3638, "sigma2" = 47.7410, "tau1" = 565.89)
+  } else if (name=="6 meses") {
+    return <- c("alpha1" = 0.7811, "sigma1" = 3.5134,
+                "alpha2" = 1.1760, "sigma2" = 13.9759, "tau1" = 558.49)
+  } else if (name=="12 meses") {
+    return <- c("alpha1" = 0.8579, "sigma1" = 7.0486,
+                "alpha2" = 1.0061, "sigma2" = 6.1740, "tau1" = 559.93)
+  }
+  return
+}
+
+params <- get_params_1cp_without_recomputing(current_name)
+
 plot_data_and_mean_1_cp <- function(current_cumulative, params) {
   alpha1 <- params["alpha1"]
   alpha2 <- params["alpha2"]
@@ -245,3 +279,49 @@ estimate_model_with_two_changepoints <- function(counts, name, burnin, iteration
 }
 
 params <- estimate_model_with_two_changepoints(single_counts, current_name, 5000, 15000)
+
+get_params_2cp_without_recomputing <- function(name) {
+  if (name=="1 mês") {
+    return <- c("alpha1" = 0.9864, "sigma1" = 6.4222, "alpha2" = 2.0600,
+                "sigma2" = 56.1728, "sigma3" = 55.2291, "alpha3" = 1.3428,
+                "tau1" = 552.0760, "tau2" = 632.6092)
+  } else if (name=="3 meses") {
+    return <- c("alpha1" = 0.8502, "sigma1" = 3.9576, "alpha2" = 2.1417,
+                "sigma2" = 57.1688, "sigma3" = 56.0449, "alpha3" = 1.4342,
+                "tau1" = 558.8111, "tau2" = 620.6246)
+  } else if (name=="6 meses") {
+    return <- c("alpha1" = 0.7765, "sigma1" = 3.4736, "alpha2" = 2.2520,
+                "sigma2" = 55.9966, "sigma3" = 57.6732, "alpha3" = 1.3676,
+                "tau1" = 562.8702, "tau2" = 617.0276)
+  } else if (name=="12 meses") {
+    return <- c("alpha1" = 0.8607, "sigma1" = 7.2052, "alpha2" = 2.1979,
+                "sigma2" = 49.5556, "sigma3" = 58.9024, "alpha3" = 1.0946,
+                "tau1" = 563.0705, "tau2" = 622.9102)
+  }
+  return
+}
+
+params <- get_params_2cp_without_recomputing(current_name)
+
+# plot_data_and_mean_2_cp <- function(current_cumulative, params) {
+#   alpha1 <- params["alpha1"]
+#   alpha2 <- params["alpha2"]
+#   alpha3 <- params["alpha3"]
+#   sigma1 <- params["sigma1"]
+#   sigma2 <- params["sigma2"]
+#   sigma3 <- params["sigma3"]
+#   tau1 <- params["tau1"]
+#   tau2 <- params["tau2"]
+#   mean_to_tau1 <- function(t) { (t/sigma1)**alpha1 }
+#   mean_to_tau2 <- function(t) { ((tau1/sigma1)**alpha1+(t/sigma2)**alpha2-(tau1/sigma2)**alpha2) }
+#   mean_to_tau2 <- function(t) { ((tau1/sigma1)**alpha1+(t/sigma2)**alpha2-(tau1/sigma2)**alpha2) }
+#   mean_1_cp <- c()
+#   for (i in 1:length(current_cumulative)) {
+#     mean_1_cp <- c(mean_1_cp, ifelse(i <= tau1, mean_to_tau(i), mean_to_end(i)))
+#   }
+#   plot(0,0,xlim = c(0,N), ylim = c(0, max(current_cumulative)), type = "n", main = "")
+#   lines(stepfun(1:(length(current_cumulative)-1), current_cumulative),cex.points = 0.1, lwd=0, col = "#000000")
+#   lines(stepfun(1:(length(mean_1_cp)-1),mean_1_cp), cex.points = 0.1, lwd=0, col = "#FF0000")
+# }
+# 
+# plot_data_and_mean_2_cp(current_cumulative, params)
