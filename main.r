@@ -21,8 +21,8 @@ initalize <- function(dir) {
   data <- read_excel("./Data/data.xlsx")
   data <- select(data, -1)  # Drop first
 }
-dir <- "/Users/marcelbraasch/RProjects/stochastic_processes/"
-#dir <- "/Users/marco/dev/stochastic_processes/"
+#dir <- "/Users/marcelbraasch/RProjects/stochastic_processes/"
+dir <- "/Users/marco/dev/stochastic_processes/"
 data <- initalize(dir)
 
 # Set which series to look at
@@ -148,6 +148,21 @@ plot_data_and_simulation <- function(cum, n_simulations) {
 }
 
 plot_data_and_simulation(current_cumulative, 10)
+
+plot_data_and_mean_0_cp <- function(current_cumulative, params) {
+  alpha1 <- params["alpha1"]
+  sigma1 <- params["sigma1"]
+  mean_to_end <- function(t) { (t/sigma1)**alpha1 }
+  mean_0_cp <- c()
+  for (i in 1:length(current_cumulative)) {
+    mean_0_cp <- c(mean_0_cp, mean_to_end(i))
+  }
+  plot(0,0,xlim = c(0,N), ylim = c(0, max(current_cumulative)), type = "n", main = "")
+  lines(stepfun(1:(length(current_cumulative)-1), current_cumulative),cex.points = 0.1, lwd=0, col = "#000000")
+  lines(stepfun(1:(length(mean_0_cp)-1),mean_0_cp), cex.points = 0.1, lwd=0, col = "#FF0000")
+}
+
+plot_data_and_mean_0_cp(current_cumulative, params)
 
 ############################# 1 Changepoint #################################
 
