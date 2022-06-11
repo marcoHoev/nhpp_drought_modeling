@@ -303,25 +303,37 @@ get_params_2cp_without_recomputing <- function(name) {
 
 params <- get_params_2cp_without_recomputing(current_name)
 
-# plot_data_and_mean_2_cp <- function(current_cumulative, params) {
-#   alpha1 <- params["alpha1"]
-#   alpha2 <- params["alpha2"]
-#   alpha3 <- params["alpha3"]
-#   sigma1 <- params["sigma1"]
-#   sigma2 <- params["sigma2"]
-#   sigma3 <- params["sigma3"]
-#   tau1 <- params["tau1"]
-#   tau2 <- params["tau2"]
-#   mean_to_tau1 <- function(t) { (t/sigma1)**alpha1 }
-#   mean_to_tau2 <- function(t) { ((tau1/sigma1)**alpha1+(t/sigma2)**alpha2-(tau1/sigma2)**alpha2) }
-#   mean_to_tau2 <- function(t) { ((tau1/sigma1)**alpha1+(t/sigma2)**alpha2-(tau1/sigma2)**alpha2) }
-#   mean_1_cp <- c()
-#   for (i in 1:length(current_cumulative)) {
-#     mean_1_cp <- c(mean_1_cp, ifelse(i <= tau1, mean_to_tau(i), mean_to_end(i)))
-#   }
-#   plot(0,0,xlim = c(0,N), ylim = c(0, max(current_cumulative)), type = "n", main = "")
-#   lines(stepfun(1:(length(current_cumulative)-1), current_cumulative),cex.points = 0.1, lwd=0, col = "#000000")
-#   lines(stepfun(1:(length(mean_1_cp)-1),mean_1_cp), cex.points = 0.1, lwd=0, col = "#FF0000")
-# }
-# 
-# plot_data_and_mean_2_cp(current_cumulative, params)
+plot_data_and_mean_2_cp <- function(current_cumulative, params) {
+  alpha1 <- params["alpha1"]
+  alpha2 <- params["alpha2"]
+  alpha3 <- params["alpha3"]
+  sigma1 <- params["sigma1"]
+  sigma2 <- params["sigma2"]
+  sigma3 <- params["sigma3"]
+  tau1 <- params["tau1"]
+  tau2 <- params["tau2"]
+  mean_to_tau1 <- function(t) { (t/sigma1)**alpha1 }
+  mean_to_tau2 <- function(t) { ((tau1/sigma1)**alpha1+(t/sigma2)**alpha2-(tau1/sigma2)**alpha2) }
+  mean_to_end <- function(t) { ( (tau1/sigma1)**alpha1
+                                +(t   /sigma3)**alpha3
+                                -(tau2/sigma3)**alpha3
+                                +(tau2/sigma2)**alpha2
+                                -(tau1/sigma2)**alpha2)
+    }
+  m <- c()
+  for (i in 1:length(current_cumulative)) {
+    if (i <= tau1) {
+      next_m <- mean_to_tau1(i)
+    } else if (i <= tau2) {
+      next_m <- mean_to_tau2(i)
+    } else {
+      next_m <- mean_to_end(i)
+    }
+    m <- c(m, next_m)
+  }
+  plot(0,0,xlim = c(0,N), ylim = c(0, max(current_cumulative)), type = "n", main = "")
+  lines(stepfun(1:(length(current_cumulative)-1), current_cumulative),cex.points = 0.1, lwd=0, col = "#000000")
+  lines(stepfun(1:(length(m)-1),m), cex.points = 0.1, lwd=0, col = "#FF0000")
+}
+
+plot_data_and_mean_2_cp(current_cumulative, params)
