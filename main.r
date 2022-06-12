@@ -28,7 +28,7 @@ data <- initalize(dir)
 # Set which series to look at
 names <- colnames(data)
 N <- nrow(data)
-current_name <- names[1]
+current_name <- names[3]
 
 ############################# Create data ###################################
 
@@ -518,9 +518,9 @@ plot_data_and_mean_2_cp_linear <- function(current_cumulative, params) {
   b3 <- params["b3"]
   tau1 <- params["tau1"]
   tau2 <- params["tau2"]
-  mean_to_tau1 <- function(t) { b1*i }
-  mean_to_tau2 <- function(t) { ((b1*tau1)+(b2*i)-(b2*tau1)) }
-  mean_to_end <- function(t) { ((b1*tau1)+(b2*tau2)-(b2*tau1)+(b3*i)-(b3*tau2))}
+  mean_to_tau1 <- function(t) { b1*t }
+  mean_to_tau2 <- function(t) { ((b1*tau1)+(b2*t)-(b2*tau1)) }
+  mean_to_end <- function(t) { ((b1*tau1)+(b2*tau2)-(b2*tau1)+(b3*t)-(b3*tau2))}
   m <- c()
   for (i in 1:length(current_cumulative)) {
     if (i <= tau1) {
@@ -538,3 +538,161 @@ plot_data_and_mean_2_cp_linear <- function(current_cumulative, params) {
 }
 
 plot_data_and_mean_2_cp_linear(current_cumulative, params)
+
+########################### 2 change points quadratic #######################
+
+estimate_quad_model_with_2cp <- function(counts, name, burnin, iterations) {
+  y <- counts[[name]]
+  plp.mod.params <- c("b1", "b2", "b3", "c1", "c2", "c3", "tau1", "tau2")
+  plp.mod.data <- list("y", "N")
+  plp.mod <- function() {
+    y[1] ~ dpois(m[1])
+    m[1] <- b1 + c1
+    for (i in 2:N) {
+      y[i] ~ dpois(m[i]-m[i-1])
+      m[i] <- ifelse(i<=tau1,
+                     b1*i + c1*i^2,
+                     ifelse(i<=tau2,
+                            (b1*tau1 + c1*tau1^2) + (b2*i + c2*i^2) - (b2*tau1 + c2*tau1^2),
+                            (b1*tau1 + c1*tau1^2) + (b2*tau2 + c2*tau2^2) - (b2*tau1 + c2*tau1^2) + (b3*i + c3*i^2) - (b3*tau2 + c3*tau2^2)
+                     )
+      )
+    }
+    b1 ~ dunif(1e-5, 1)
+    b2 ~ dunif(1e-5, 1)
+    b3 ~ dunif(1e-5, 1)
+    c1 ~ dunif(-1e-1, 1e-1)
+    c2 ~ dunif(-1e-1, 1e-1)
+    c3 ~ dunif(-1e-1, 1e-1)
+    tau1 ~ dunif(400,600)
+    tau2 ~ dunif(600,N)
+  }
+  plp.mod.fit <- jags(data = plp.mod.data, 
+                      parameters.to.save = plp.mod.params,
+                      n.chains = 3, n.iter = iterations,
+                      n.burnin = burnin, model.file = plp.mod)
+  print(plp.mod.fit)
+  
+  b1 <- plp.mod.fit$BUGSoutput[11][["mean"]][["b1"]]
+  b2 <- plp.mod.fit$BUGSoutput[11][["mean"]][["b2"]]
+  b3 <- plp.mod.fit$BUGSoutput[11][["mean"]][["b3"]]
+  c1 <- plp.mod.fit$BUGSoutput[11][["mean"]][["c1"]]
+  c2 <- plp.mod.fit$BUGSoutput[11][["mean"]][["c2"]]
+  c3 <- plp.mod.fit$BUGSoutput[11][["mean"]][["c3"]]
+  tau1 <- plp.mod.fit$BUGSoutput[11][["mean"]][["tau1"]]
+  tau2 <- plp.mod.fit$BUGSoutput[11][["mean"]][["tau2"]]
+  c("b1" = b1, "b2" = b2, "b3" = b3,
+    "c1" = c1, "c2" = c2, "c3" = c3,
+    "tau1" = tau1, "tau2" = tau2)
+}
+
+params <- estimate_quad_model_with_2cp(single_counts, current_name, 10000, 15000)
+
+plot_data_and_mean_2_cp_quad <- function(current_cumulative, params) {
+  b1 <- params["b1"]
+  b2 <- params["b2"]
+  b3 <- params["b3"]
+  c1 <- params["c1"]
+  c2 <- params["c2"]
+  c3 <- params["c3"]
+  tau1 <- params["tau1"]
+  tau2 <- params["tau2"]
+  mean_to_tau1 <- function(t) { b1*t + c1*t^2 }
+  mean_to_tau2 <- function(t) { ((b1*tau1 + c1*tau1^2)+(b2*t + c2*t^2)-(b2*tau1 + c2*tau1^2)) }
+  mean_to_end <- function(t)  { ((b1*tau1 + c1*tau1^2)+(b2*tau2 + c2*tau2^2)-(b2*tau1+c2*tau1^2)+(b3*t+c3*t^2)-(b3*tau2+c3*tau2^2))}
+  m <- c()
+  for (i in 1:length(current_cumulative)) {
+    if (i <= tau1) {
+      next_m <- mean_to_tau1(i)
+    } else if (i <= tau2) {
+      next_m <- mean_to_tau2(i)
+    } else {
+      next_m <- mean_to_end(i)
+    }
+    m <- c(m, next_m)
+  }
+  plot(0,0,xlim = c(0,N), ylim = c(0, max(current_cumulative)), type = "n", main = "")
+  lines(stepfun(1:(length(current_cumulative)-1), current_cumulative),cex.points = 0.1, lwd=0, col = "#000000")
+  lines(stepfun(1:(length(m)-1),m), cex.points = 0.1, lwd=0, col = "#FF0000")
+}
+
+plot_data_and_mean_2_cp_quad(current_cumulative, params)
+
+########################### 2 change points root #######################
+
+estimate_root_model_with_2cp <- function(counts, name, burnin, iterations) {
+  y <- counts[[name]]
+  plp.mod.params <- c("b1", "b2", "b3", "c1", "c2", "c3", "tau1", "tau2")
+  plp.mod.data <- list("y", "N")
+  plp.mod <- function() {
+    y[1] ~ dpois(m[1])
+    m[1] <- b1 + c1
+    for (i in 2:N) {
+      y[i] ~ dpois(m[i]-m[i-1])
+      m[i] <- ifelse(i<=tau1,
+                     b1*i + c1*i^(1/2),
+                     ifelse(i<=tau2,
+                            (b1*tau1 + c1*tau1^(1/2)) + (b2*i + c2*i^(1/2)) - (b2*tau1 + c2*tau1^(1/2)),
+                            (b1*tau1 + c1*tau1^(1/2)) + (b2*tau2 + c2*tau2^(1/2)) - (b2*tau1 + c2*tau1^(1/2)) + (b3*i + c3*i^(1/2)) - (b3*tau2 + c3*tau2^(1/2))
+                     )
+      )
+    }
+    b1 ~ dunif(1e-5, 1)
+    b2 ~ dunif(1e-5, 1)
+    b3 ~ dunif(1e-5, 1)
+    c1 ~ dunif(-1e-1, 1e-1)
+    c2 ~ dunif(-1e-1, 1e-1)
+    c3 ~ dunif(-1e-1, 1e-1)
+    tau1 ~ dunif(400,600)
+    tau2 ~ dunif(600,N)
+  }
+  plp.mod.fit <- jags(data = plp.mod.data, 
+                      parameters.to.save = plp.mod.params,
+                      n.chains = 3, n.iter = iterations,
+                      n.burnin = burnin, model.file = plp.mod)
+  print(plp.mod.fit)
+  
+  b1 <- plp.mod.fit$BUGSoutput[11][["mean"]][["b1"]]
+  b2 <- plp.mod.fit$BUGSoutput[11][["mean"]][["b2"]]
+  b3 <- plp.mod.fit$BUGSoutput[11][["mean"]][["b3"]]
+  c1 <- plp.mod.fit$BUGSoutput[11][["mean"]][["c1"]]
+  c2 <- plp.mod.fit$BUGSoutput[11][["mean"]][["c2"]]
+  c3 <- plp.mod.fit$BUGSoutput[11][["mean"]][["c3"]]
+  tau1 <- plp.mod.fit$BUGSoutput[11][["mean"]][["tau1"]]
+  tau2 <- plp.mod.fit$BUGSoutput[11][["mean"]][["tau2"]]
+  c("b1" = b1, "b2" = b2, "b3" = b3,
+    "c1" = c1, "c2" = c2, "c3" = c3,
+    "tau1" = tau1, "tau2" = tau2)
+}
+
+params <- estimate_root_model_with_2cp(single_counts, current_name, 15000, 25000)
+
+plot_data_and_mean_2_cp_root <- function(current_cumulative, params) {
+  b1 <- params["b1"]
+  b2 <- params["b2"]
+  b3 <- params["b3"]
+  c1 <- params["c1"]
+  c2 <- params["c2"]
+  c3 <- params["c3"]
+  tau1 <- params["tau1"]
+  tau2 <- params["tau2"]
+  mean_to_tau1 <- function(t) { b1*t + c1*t^(1/2) }
+  mean_to_tau2 <- function(t) { ((b1*tau1 + c1*tau1^(1/2))+(b2*t + c2*t^(1/2))-(b2*tau1 + c2*tau1^(1/2))) }
+  mean_to_end <- function(t)  { ((b1*tau1 + c1*tau1^(1/2))+(b2*tau2 + c2*tau2^(1/2))-(b2*tau1+c2*tau1^(1/2))+(b3*t+c3*t^(1/2))-(b3*tau2+c3*tau2^(1/2)))}
+  m <- c()
+  for (i in 1:length(current_cumulative)) {
+    if (i <= tau1) {
+      next_m <- mean_to_tau1(i)
+    } else if (i <= tau2) {
+      next_m <- mean_to_tau2(i)
+    } else {
+      next_m <- mean_to_end(i)
+    }
+    m <- c(m, next_m)
+  }
+  plot(0,0,xlim = c(0,N), ylim = c(0, max(current_cumulative)), type = "n", main = "")
+  lines(stepfun(1:(length(current_cumulative)-1), current_cumulative),cex.points = 0.1, lwd=0, col = "#000000")
+  lines(stepfun(1:(length(m)-1),m), cex.points = 0.1, lwd=0, col = "#FF0000")
+}
+
+plot_data_and_mean_2_cp_root(current_cumulative, params)
