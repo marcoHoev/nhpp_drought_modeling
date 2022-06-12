@@ -21,8 +21,8 @@ initalize <- function(dir) {
   data <- read_excel("./Data/data.xlsx")
   data <- select(data, -1)  # Drop first
 }
-#dir <- "/Users/marcelbraasch/RProjects/stochastic_processes/"
-dir <- "/Users/marco/dev/stochastic_processes/"
+dir <- "/Users/marcelbraasch/RProjects/stochastic_processes/"
+#dir <- "/Users/marco/dev/stochastic_processes/"
 data <- initalize(dir)
 
 # Set which series to look at
@@ -70,9 +70,10 @@ create_cumulative_counts <- function(data) {
 }
 
 cumulative_counts <- create_cumulative_counts(data)
+
 current_cumulative <- cumulative_counts[[current_name]]
 
-############################# No change point ###############################
+############################# 0 change point plp ###############################
 
 estimate_model_with_no_changepoints <- function(counts, name, burnin, iterations) {
   y <- counts[[name]]
@@ -98,7 +99,7 @@ estimate_model_with_no_changepoints <- function(counts, name, burnin, iterations
   c("alpha1" = alpha1, "sigma1" = sigma1)
 }
 
-params <- estimate_model_with_no_changepoints(single_counts, current_name, burnin = 20000, iterations = 25000)
+params <- estimate_model_with_no_changepoints(single_counts, current_name, burnin = 10000, iterations = 15000)
 
 get_params_0cp_without_recomputing <- function(name) {
   if (name=="1 mês") {
@@ -140,31 +141,24 @@ simulate_process_with_no_changepoints <- function(params) {
 plot_data_and_simulation <- function(cum, n_simulations) {
   plot(0,0,xlim = c(0,N),ylim = c(0,max(cum)), type = "n",
        main = "Original data (black) with simulated processes (red)")
-  lines(stepfun(1:(length(cum)-1), cum), cex.points = 0.1, lwd=0, col = "#000000")
   for (i in 1:n_simulations) {
     S <- simulate_process_with_no_changepoints(params)
-    lines(stepfun(1:(length(S)-1), S), cex.points = 0.01, lwd=0, col = "#FF0000")
+    lines(stepfun(1:(length(S)-1), S), cex.points = 0.01, lwd=0, col = "#0000FF")
   }
+  lines(stepfun(1:(length(cum)-1), cum), cex.points = 0.1, lwd=0, col = "#000000")
+  alpha1 <- params["alpha1"]
+  sigma1 <- params["sigma1"]
+  mean_to_end <- function(t) { (t/sigma1)**alpha1 }
+  m <- c()
+  for (i in 1:length(current_cumulative)) {
+    m <- c(m, mean_to_end(i))
+  }
+  lines(stepfun(1:(length(m)-1),m), cex.points = 0.1, lwd=0, col = "#FF0000")
 }
 
 plot_data_and_simulation(current_cumulative, 10)
 
-plot_data_and_mean_0_cp <- function(current_cumulative, params) {
-  alpha1 <- params["alpha1"]
-  sigma1 <- params["sigma1"]
-  mean_to_end <- function(t) { (t/sigma1)**alpha1 }
-  mean_0_cp <- c()
-  for (i in 1:length(current_cumulative)) {
-    mean_0_cp <- c(mean_0_cp, mean_to_end(i))
-  }
-  plot(0,0,xlim = c(0,N), ylim = c(0, max(current_cumulative)), type = "n", main = "")
-  lines(stepfun(1:(length(current_cumulative)-1), current_cumulative),cex.points = 0.1, lwd=0, col = "#000000")
-  lines(stepfun(1:(length(mean_0_cp)-1),mean_0_cp), cex.points = 0.1, lwd=0, col = "#FF0000")
-}
-
-plot_data_and_mean_0_cp(current_cumulative, params)
-
-############################# 1 Changepoint #################################
+############################# 1 changepoint plp #################################
 
 estimate_model_with_one_changepoint <- function(counts, name, burnin, iterations) {
   y <- counts[[name]]
@@ -242,7 +236,7 @@ plot_data_and_mean_1_cp <- function(current_cumulative, params) {
 
 plot_data_and_mean_1_cp(current_cumulative, params)
 
-############################# 2 change points ################################
+############################# 2 change points plp ################################
 
 estimate_model_with_two_changepoints <- function(counts, name, burnin, iterations) {
   y <- counts[[name]]
@@ -353,7 +347,7 @@ plot_data_and_mean_2_cp <- function(current_cumulative, params) {
 
 plot_data_and_mean_2_cp(current_cumulative, params)
 
-############################# 3 change points ################################
+############################# 3 change points plp ################################
 
 estimate_model_with_three_changepoints <- function(counts, name, burnin, iterations) {
   y <- counts[[name]]
@@ -470,7 +464,7 @@ plot_data_and_mean_3_cp <- function(current_cumulative, params) {
 
 plot_data_and_mean_3_cp(current_cumulative, params)
 
-########################### 2 change points homogeneous #######################
+############################# 2 change points homogeneous #######################
 
 estimate_linear_model_with_2cp <- function(counts, name, burnin, iterations) {
   y <- counts[[name]]
@@ -539,7 +533,7 @@ plot_data_and_mean_2_cp_linear <- function(current_cumulative, params) {
 
 plot_data_and_mean_2_cp_linear(current_cumulative, params)
 
-########################### 2 change points quadratic #######################
+############################# 2 change points quadratic #######################
 
 estimate_quad_model_with_2cp <- function(counts, name, burnin, iterations) {
   y <- counts[[name]]
@@ -618,7 +612,7 @@ plot_data_and_mean_2_cp_quad <- function(current_cumulative, params) {
 
 plot_data_and_mean_2_cp_quad(current_cumulative, params)
 
-########################### 2 change points root #######################
+############################# 2 change points root #######################
 
 estimate_root_model_with_2cp <- function(counts, name, burnin, iterations) {
   y <- counts[[name]]
