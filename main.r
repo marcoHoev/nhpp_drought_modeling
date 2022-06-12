@@ -665,7 +665,7 @@ estimate_root_model_with_2cp <- function(counts, name, burnin, iterations) {
     "tau1" = tau1, "tau2" = tau2)
 }
 
-params <- estimate_root_model_with_2cp(single_counts, current_name, 15000, 25000)
+params <- estimate_root_model_with_2cp(single_counts, current_name, 10000, 15000)
 
 plot_data_and_mean_2_cp_root <- function(current_cumulative, params) {
   b1 <- params["b1"]

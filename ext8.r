@@ -28,7 +28,7 @@ data <- initalize(dir)
 # Set which series to look at
 names <- colnames(data)
 N <- nrow(data)
-current_name <- names[1]
+current_name <- names[4]
 
 ############################# Create data ###################################
 
@@ -111,7 +111,7 @@ estimate_model_extended <- function(counts, name, burnin, iterations) {
   c("a1" = a1, "a2" = a2, "a3" = a3, "a4" = a4, "a5" = a5, "a6" = a6, "a7" = a7, "a8" = a8)
 }
 
-params <- estimate_model_extended(single_counts, current_name, burnin = 20000, iterations = 25000)
+params <- estimate_model_extended(single_counts, current_name, burnin = 10000, iterations = 15000)
 
 plot_data_and_mean_extended <- function(current_cumulative, params) {
   a1 <- params["a1"]
