@@ -158,6 +158,66 @@ plot_data_and_simulation <- function(cum, n_simulations) {
 
 plot_data_and_simulation(current_cumulative, 10)
 
+############################# 0 change point quadratic ###############################
+
+estimate_quadratic_model_with_no_changepoints <- function(counts, name, burnin, iterations) {
+  y <- counts[[name]]
+  plp.mod.params <- c("a", "b") 
+  plp.mod.data <- list("y", "N") 
+  plp.mod <- function() {
+    y[1] ~ dpois(m[1])
+    m[1] <- a+b
+    for (i in 2:N) {
+      y[i] ~ dpois(m[i]-m[i-1])
+      m[i] <- a*i+b*i**2
+    }
+    a ~ dunif(1e-5, 100)
+    b ~ dunif(1e-5, 100)
+  }
+  plp.mod.fit <- jags(data = plp.mod.data, 
+                      parameters.to.save = plp.mod.params,
+                      n.chains = 3, n.iter = iterations,
+                      n.burnin = burnin, model.file = plp.mod)
+  print(plp.mod.fit)
+  sigma1 <- plp.mod.fit$BUGSoutput[11][["mean"]][["a"]]
+  alpha1 <- plp.mod.fit$BUGSoutput[11][["mean"]][["b"]]
+  c("a" = a, "b" = b)
+}
+
+params <- estimate_quadratic_model_with_no_changepoints(single_counts, current_name, burnin = 10000, iterations = 15000)
+
+get_params_0cp_without_recomputing <- function(name) {
+  if (name=="1 mês") {
+    return <- c("a" = 1.0526, "b" = 7.5730)
+  } else if (name=="3 meses") {
+    return <- c("a" = 1.0042, "b" = 6.7560)
+  } else if (name=="6 meses") {
+    return <- c("a" = 1.0498, "b" = 8.8409)
+  } else if (name=="12 meses") {
+    return <- c("a" = 0.124, "b" = 0.000)
+  }
+  return
+}
+
+params <- get_params_0cp_without_recomputing(current_name)
+
+plot_data <- function(cum) {
+  plot(0,0,xlim = c(0,N),ylim = c(0,max(cum)), type = "n",
+       main = "Original data (black) with simulated processes (red)")
+  lines(stepfun(1:(length(cum)-1), cum), cex.points = 0.1, lwd=0, col = "#000000")
+  alpha1 <- params["a"]
+  sigma1 <- params["b"]
+  mean_to_end <- function(t) { (t/sigma1)**alpha1 }
+  m <- c()
+  for (i in 1:length(current_cumulative)) {
+    m <- c(m, mean_to_end(i))
+  }
+  lines(stepfun(1:(length(m)-1),m), cex.points = 0.1, lwd=0, col = "#FF0000")
+}
+
+plot_data(current_cumulative)
+
+
 ############################# 1 changepoint plp #################################
 
 estimate_model_with_one_changepoint <- function(counts, name, burnin, iterations) {
@@ -215,7 +275,7 @@ get_params_1cp_without_recomputing <- function(name) {
   return
 }
 
-params <- get_params_1cp_without_recomputing(current_name)
+params_1cp <- get_params_1cp_without_recomputing(current_name)
 
 plot_data_and_mean_1_cp <- function(current_cumulative, params) {
   alpha1 <- params["alpha1"]
@@ -234,7 +294,7 @@ plot_data_and_mean_1_cp <- function(current_cumulative, params) {
   lines(stepfun(1:(length(mean_1_cp)-1),mean_1_cp), cex.points = 0.1, lwd=0, col = "#FF0000")
 }
 
-plot_data_and_mean_1_cp(current_cumulative, params)
+plot_data_and_mean_1_cp(current_cumulative, params_1cp)
 
 ############################# 2 change points plp ################################
 
@@ -310,7 +370,7 @@ get_params_2cp_without_recomputing <- function(name) {
   return
 }
 
-params <- get_params_2cp_without_recomputing(current_name)
+params_2cp <- get_params_2cp_without_recomputing(current_name)
 
 plot_data_and_mean_2_cp <- function(current_cumulative, params) {
   alpha1 <- params["alpha1"]
@@ -345,7 +405,7 @@ plot_data_and_mean_2_cp <- function(current_cumulative, params) {
   lines(stepfun(1:(length(m)-1),m), cex.points = 0.1, lwd=0, col = "#FF0000")
 }
 
-plot_data_and_mean_2_cp(current_cumulative, params)
+plot_data_and_mean_2_cp(current_cumulative, params_2cp)
 
 ############################# 3 change points plp ################################
 
@@ -690,3 +750,78 @@ plot_data_and_mean_2_cp_root <- function(current_cumulative, params) {
 }
 
 plot_data_and_mean_2_cp_root(current_cumulative, params)
+
+############################# Plotting for report #######################
+
+
+plot_all <- function(number) {
+  current_name <- names[[number]]
+  
+  # Data
+  cum <- cumulative_counts[[current_name]]
+  plot(0,0,xlim = c(0,N),ylim = c(0,max(cum)), type = "l",
+       xlab="Month", ylab="Cumulative values for SPI-12 ≤ -1.0",)
+  lines(stepfun(1:(length(cum)-1), cum), cex.points = 0.15, lwd=0,
+         col = "#000000")
+  
+  # 0CP
+  alpha1 <- params["alpha1"]
+  sigma1 <- params["sigma1"]
+  mean_to_end <- function(t) { (t/sigma1)**alpha1 }
+  m <- c()
+  for (i in 1:length(current_cumulative)) {
+    m <- c(m, mean_to_end(i))
+  }
+  lines(stepfun(1:(length(m)-1),m), cex.points = 0.1, lwd=0, col = "#16D881")
+  
+  # 1CP
+  alpha1 <- params_1cp["alpha1"]
+  alpha2 <- params_1cp["alpha2"]
+  sigma1 <- params_1cp["sigma1"]
+  sigma2 <- params_1cp["sigma2"]
+  tau1 <- params_1cp["tau1"]
+  mean_to_tau <- function(t) { (t/sigma1)**alpha1 }
+  mean_to_end <- function(t) { ((tau1/sigma1)**alpha1+(t/sigma2)**alpha2-(tau1/sigma2)**alpha2) }
+  mean_1_cp <- c()
+  for (i in 1:length(current_cumulative)) {
+    mean_1_cp <- c(mean_1_cp, ifelse(i <= tau1, mean_to_tau(i), mean_to_end(i)))
+  }
+  lines(stepfun(1:(length(mean_1_cp)-1),mean_1_cp), cex.points = 0.1, lwd=0, col = "#EF054A")
+  
+  # 2CP
+  alpha1 <- params_2cp["alpha1"]
+  alpha2 <- params_2cp["alpha2"]
+  alpha3 <- params_2cp["alpha3"]
+  sigma1 <- params_2cp["sigma1"]
+  sigma2 <- params_2cp["sigma2"]
+  sigma3 <- params_2cp["sigma3"]
+  tau1 <- params_2cp["tau1"]
+  tau2 <- params_2cp["tau2"]
+  mean_to_tau1 <- function(t) { (t/sigma1)**alpha1 }
+  mean_to_tau2 <- function(t) { ((tau1/sigma1)**alpha1+(t/sigma2)**alpha2-(tau1/sigma2)**alpha2) }
+  mean_to_end <- function(t) { ( (tau1/sigma1)**alpha1
+                                 +(t   /sigma3)**alpha3
+                                 -(tau2/sigma3)**alpha3
+                                 +(tau2/sigma2)**alpha2
+                                 -(tau1/sigma2)**alpha2)
+  }
+  m <- c()
+  for (i in 1:length(current_cumulative)) {
+    if (i <= tau1) {
+      next_m <- mean_to_tau1(i)
+    } else if (i <= tau2) {
+      next_m <- mean_to_tau2(i)
+    } else {
+      next_m <- mean_to_end(i)
+    }
+    m <- c(m, next_m)
+  }
+  lines(stepfun(1:(length(m)-1),m), cex.points = 0.1, lwd=0, col = "#3E71F8")
+}
+number <- 5
+current_name <- names[number]
+params_2cp <- get_params_2cp_without_recomputing(current_name)
+params_1cp <- get_params_1cp_without_recomputing(current_name)
+params <- get_params_0cp_without_recomputing(current_name)
+plot_all(number)
+
