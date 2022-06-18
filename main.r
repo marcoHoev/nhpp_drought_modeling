@@ -21,14 +21,14 @@ initalize <- function(dir) {
   data <- read_excel("./Data/data.xlsx")
   data <- select(data, -1)  # Drop first
 }
-dir <- "/Users/marcelbraasch/RProjects/stochastic_processes/"
-#dir <- "/Users/marco/dev/stochastic_processes/"
+#dir <- "/Users/marcelbraasch/RProjects/stochastic_processes/"
+dir <- "/Users/marco/dev/stochastic_processes/"
 data <- initalize(dir)
 
 # Set which series to look at
 names <- colnames(data)
 N <- nrow(data)
-current_name <- names[3]
+current_name <- names[5]
 
 ############################# Create data ###################################
 
@@ -566,6 +566,26 @@ estimate_linear_model_with_2cp <- function(counts, name, burnin, iterations) {
 
 params <- estimate_linear_model_with_2cp(single_counts, current_name, 10000, 15000)
 
+
+get_params_linear_without_recomputing <- function(name) {
+  if (name=="1 mês") {
+    return <- c("b1" = 0.1618, "b2" = 0.5388, "b3" = 0.0800,
+                "tau1" = 554.378, "tau2" = 629.485)
+  } else if (name=="3 meses") {
+    return <- c("b1" = 0.13534647, "b2" = 0.62597876, "b3" = 0.09277784,
+                "tau1" = 559.881, "tau2" = 620.929)
+  } else if (name=="6 meses") {
+    return <- c("b1" = 0.1074, "b2" = 0.8814, "b3" = 0.0728,
+                "tau1" = 562.561, "tau2" = 616.469)
+  } else if (name=="12 meses") {
+    return <- c("b1" = 0.08763865, "b2" = 1.00477610, "b3" = 0.03446260,
+                "tau1" = 562.785, "tau2" = 622.393)
+  }
+  return
+}
+
+params <- get_params_linear_without_recomputing(current_name)
+
 plot_data_and_mean_2_cp_linear <- function(current_cumulative, params) {
   b1 <- params["b1"]
   b2 <- params["b2"]
@@ -641,6 +661,29 @@ estimate_quad_model_with_2cp <- function(counts, name, burnin, iterations) {
 }
 
 params <- estimate_quad_model_with_2cp(single_counts, current_name, 10000, 15000)
+
+get_params_quadratic_without_recomputing <- function(name) {
+  if (name=="1 mês") {
+    return <- c("b1" = 0.1785, "b2" = 0.5018, "b3" = 0.6402,
+                "c1" = -2.837944e-05, "c2" = 8.174496e-05, "c3" = -3.895594e-04,
+                "tau1" = 554.576, "tau2" = 615.436)
+  } else if (name=="3 meses") {
+    return <- c("b1" = 1.998658e-01, "b2" = 4.809733e-01, "b3" = 3.866826e-01,
+                "c1" = -1.131177e-04, "c2" = 1.217071e-04, "c3" = -2.057753e-04,
+                "tau1" = 557.997, "tau2" = 619.481)
+  } else if (name=="6 meses") {
+    return <- c("b1" = 2.001705e-01, "b2" = 5.027049e-01, "b3" = 2.053414e-01,
+                "c1" = -1.618228e-04, "c2" = 3.280839e-04, "c3" = -9.065157e-05,
+                "tau1" = 562.372, "tau2" = 616.379)
+  } else if (name=="12 meses") {
+    return <- c("b1" = 1.450162e-01, "b2" = 4.910334e-01, "b3" = 8.017581e-02,
+                "c1" = -9.954617e-05, "c2" = 4.314868e-04, "c3" = -2.861638e-05,
+                "tau1" = 562.623, "tau2" = 622.345)
+  }
+  return
+}
+
+params <- get_params_quadratic_without_recomputing(current_name)
 
 plot_data_and_mean_2_cp_quad <- function(current_cumulative, params) {
   b1 <- params["b1"]
@@ -824,4 +867,80 @@ params_2cp <- get_params_2cp_without_recomputing(current_name)
 params_1cp <- get_params_1cp_without_recomputing(current_name)
 params <- get_params_0cp_without_recomputing(current_name)
 plot_all(number)
+
+############################# Plotting extensions #######################
+
+
+plot_all_ext <- function(number) {
+  current_name <- names[[number]]
+  
+  # Data
+  cum <- cumulative_counts[[current_name]]
+  plot(0,0,xlim = c(0,N),ylim = c(0,max(cum)), type = "l",
+       xlab="Month", ylab="Cumulative values for SPI-12 ≤ -1.0",)
+  lines(stepfun(1:(length(cum)-1), cum), cex.points = 0.15, lwd=0,
+        col = "#000000")
+  
+  # 0CP
+  alpha1 <- params["alpha1"]
+  sigma1 <- params["sigma1"]
+  mean_to_end <- function(t) { (t/sigma1)**alpha1 }
+  m <- c()
+  for (i in 1:length(current_cumulative)) {
+    m <- c(m, mean_to_end(i))
+  }
+  lines(stepfun(1:(length(m)-1),m), cex.points = 0.1, lwd=0, col = "#16D881")
+  
+  # 1CP
+  alpha1 <- params_1cp["alpha1"]
+  alpha2 <- params_1cp["alpha2"]
+  sigma1 <- params_1cp["sigma1"]
+  sigma2 <- params_1cp["sigma2"]
+  tau1 <- params_1cp["tau1"]
+  mean_to_tau <- function(t) { (t/sigma1)**alpha1 }
+  mean_to_end <- function(t) { ((tau1/sigma1)**alpha1+(t/sigma2)**alpha2-(tau1/sigma2)**alpha2) }
+  mean_1_cp <- c()
+  for (i in 1:length(current_cumulative)) {
+    mean_1_cp <- c(mean_1_cp, ifelse(i <= tau1, mean_to_tau(i), mean_to_end(i)))
+  }
+  lines(stepfun(1:(length(mean_1_cp)-1),mean_1_cp), cex.points = 0.1, lwd=0, col = "#EF054A")
+  
+  # 2CP
+  alpha1 <- params_2cp["alpha1"]
+  alpha2 <- params_2cp["alpha2"]
+  alpha3 <- params_2cp["alpha3"]
+  sigma1 <- params_2cp["sigma1"]
+  sigma2 <- params_2cp["sigma2"]
+  sigma3 <- params_2cp["sigma3"]
+  tau1 <- params_2cp["tau1"]
+  tau2 <- params_2cp["tau2"]
+  mean_to_tau1 <- function(t) { (t/sigma1)**alpha1 }
+  mean_to_tau2 <- function(t) { ((tau1/sigma1)**alpha1+(t/sigma2)**alpha2-(tau1/sigma2)**alpha2) }
+  mean_to_end <- function(t) { ( (tau1/sigma1)**alpha1
+                                 +(t   /sigma3)**alpha3
+                                 -(tau2/sigma3)**alpha3
+                                 +(tau2/sigma2)**alpha2
+                                 -(tau1/sigma2)**alpha2)
+  }
+  m <- c()
+  for (i in 1:length(current_cumulative)) {
+    if (i <= tau1) {
+      next_m <- mean_to_tau1(i)
+    } else if (i <= tau2) {
+      next_m <- mean_to_tau2(i)
+    } else {
+      next_m <- mean_to_end(i)
+    }
+    m <- c(m, next_m)
+  }
+  lines(stepfun(1:(length(m)-1),m), cex.points = 0.1, lwd=0, col = "#3E71F8")
+}
+number <- 5
+current_name <- names[number]
+params_2cp <- get_params_2cp_without_recomputing(current_name)
+params_1cp <- get_params_1cp_without_recomputing(current_name)
+params <- get_params_0cp_without_recomputing(current_name)
+plot_all(number)
+
+
 
