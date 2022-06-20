@@ -28,7 +28,7 @@ data <- initalize(dir)
 # Set which series to look at
 names <- colnames(data)
 N <- nrow(data)
-current_name <- names[5]
+current_name <- names[1]
 
 ############################# Create data ###################################
 
@@ -246,7 +246,10 @@ estimate_model_with_one_changepoint <- function(counts, name, burnin, iterations
                       parameters.to.save = plp.mod.params,
                       n.chains = 3, n.iter = iterations,
                       n.burnin = burnin, model.file = plp.mod)
+  #plp.mod.upd <- autojags(plp.mod.fit, n.chains = 3, n.iter = iterations, Rhat = 1.01)
+  
   print(plp.mod.fit)
+  #print(plp.mod.upd)
   sigma1 <- plp.mod.fit$BUGSoutput[11][["mean"]][["sigma1"]]
   alpha1 <- plp.mod.fit$BUGSoutput[11][["mean"]][["alpha1"]]
   sigma2 <- plp.mod.fit$BUGSoutput[11][["mean"]][["sigma2"]]
@@ -294,7 +297,7 @@ plot_data_and_mean_1_cp <- function(current_cumulative, params) {
   lines(stepfun(1:(length(mean_1_cp)-1),mean_1_cp), cex.points = 0.1, lwd=0, col = "#FF0000")
 }
 
-plot_data_and_mean_1_cp(current_cumulative, params_1cp)
+plot_data_and_mean_1_cp(current_cumulative, params)
 
 ############################# 2 change points plp ################################
 
