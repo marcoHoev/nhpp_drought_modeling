@@ -28,7 +28,7 @@ data <- initalize(dir)
 # Set which series to look at
 names <- colnames(data)
 N <- nrow(data)
-current_name <- names[1]
+current_name <- names[5]
 
 ############################# Create data ###################################
 
@@ -552,7 +552,7 @@ estimate_linear_model_with_2cp <- function(counts, name, burnin, iterations) {
     tau1 ~ dunif(400,600)
     tau2 ~ dunif(600,N)
   }
-  plp.mod.fit <- jags(data = plp.mod.data, 
+  plp.mod.fit <- jags.parallel(data = plp.mod.data, 
                       parameters.to.save = plp.mod.params,
                       n.chains = 3, n.iter = iterations,
                       n.burnin = burnin, model.file = plp.mod)
@@ -644,7 +644,7 @@ estimate_quad_model_with_2cp <- function(counts, name, burnin, iterations) {
     tau1 ~ dunif(400,600)
     tau2 ~ dunif(600,N)
   }
-  plp.mod.fit <- jags(data = plp.mod.data, 
+  plp.mod.fit <- jags.parallel(data = plp.mod.data, 
                       parameters.to.save = plp.mod.params,
                       n.chains = 3, n.iter = iterations,
                       n.burnin = burnin, model.file = plp.mod)
@@ -671,16 +671,16 @@ get_params_quadratic_without_recomputing <- function(name) {
                 "c1" = -2.837944e-05, "c2" = 8.174496e-05, "c3" = -3.895594e-04,
                 "tau1" = 554.576, "tau2" = 615.436)
   } else if (name=="3 meses") {
-    return <- c("b1" = 1.998658e-01, "b2" = 4.809733e-01, "b3" = 3.866826e-01,
-                "c1" = -1.131177e-04, "c2" = 1.217071e-04, "c3" = -2.057753e-04,
-                "tau1" = 557.997, "tau2" = 619.481)
+    return <- c("b1" = 1.994307e-01, "b2" = 4.598110e-01, "b3" = 3.878267e-01,
+                "c1" = -1.131177e-04, "c2" = 1.470942e-04, "c3" = -2.063204e-04,
+                "tau1" = 5.576013e+02, "tau2" = 6.172802e+02)
   } else if (name=="6 meses") {
-    return <- c("b1" = 2.001705e-01, "b2" = 5.027049e-01, "b3" = 2.053414e-01,
-                "c1" = -1.618228e-04, "c2" = 3.280839e-04, "c3" = -9.065157e-05,
+    return <- c("b1" = 1.964004e-01, "b2" = 5.121623e-01, "b3" = 1.766961e-01,
+                "c1" = -1.579309e-04, "c2" = 3.137596e-04, "c3" = -7.070876e-05,
                 "tau1" = 562.372, "tau2" = 616.379)
   } else if (name=="12 meses") {
-    return <- c("b1" = 1.450162e-01, "b2" = 4.910334e-01, "b3" = 8.017581e-02,
-                "c1" = -9.954617e-05, "c2" = 4.314868e-04, "c3" = -2.861638e-05,
+    return <- c("b1" = 1.460624e-01, "b2" = 4.988913e-01, "b3" = 9.668377e-02,
+                "c1" = -1.005693e-04, "c2" = 4.251908e-04, "c3" = -3.966034e-05,
                 "tau1" = 562.623, "tau2" = 622.345)
   }
   return
@@ -796,6 +796,94 @@ plot_data_and_mean_2_cp_root <- function(current_cumulative, params) {
 }
 
 plot_data_and_mean_2_cp_root(current_cumulative, params)
+
+############################# Polynomial no change point #######################
+
+
+estimate_polynomial_model <- function(counts, name, burnin, iterations) {
+  y <- counts[[name]]
+  plp.mod.params <- c("a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8") 
+  plp.mod.data <- list("y", "N") 
+  plp.mod <- function() {
+    y[1] ~ dpois(m[1])
+    m[1] <- a1*1 + a2*1^2 + a3*1^3 + a4*1^4 + a5*1^5 + a6*1^6 + a7*1^7 + a8*1^8 
+    for (i in 2:N) {
+      y[i] ~ dpois(m[i]-m[i-1])
+      m[i] <- a1*i + a2*i^2 + a3*i^3 + a4*i^4 + a5*i^5 + a6*i^6 + a7*i^7 + a8*i^8 
+    }
+    a1 ~ dunif(1e-10, 1)
+    a2 ~ dunif(-1000, 1000)
+    a3 ~ dunif(-1000, 1000)
+    a4 ~ dunif(-1000, 1000)
+    a5 ~ dunif(-1000, 1000)
+    a6 ~ dunif(-1000, 1000)
+    a7 ~ dunif(-1000, 1000)
+    a8 ~ dunif(-1000, 1000)
+  }
+  plp.mod.fit <- jags.parallel(data = plp.mod.data, 
+                      parameters.to.save = plp.mod.params,
+                      n.chains = 3, n.iter = iterations,
+                      n.burnin = burnin, model.file = plp.mod)
+  print(plp.mod.fit)
+  a0 <- plp.mod.fit$BUGSoutput[11][["mean"]][["a0"]]
+  a1 <- plp.mod.fit$BUGSoutput[11][["mean"]][["a1"]]
+  a2 <- plp.mod.fit$BUGSoutput[11][["mean"]][["a2"]]
+  a3 <- plp.mod.fit$BUGSoutput[11][["mean"]][["a3"]]
+  a4 <- plp.mod.fit$BUGSoutput[11][["mean"]][["a4"]]
+  a5 <- plp.mod.fit$BUGSoutput[11][["mean"]][["a5"]]
+  a6 <- plp.mod.fit$BUGSoutput[11][["mean"]][["a6"]]
+  a7 <- plp.mod.fit$BUGSoutput[11][["mean"]][["a7"]]
+  a8 <- plp.mod.fit$BUGSoutput[11][["mean"]][["a8"]]
+  c("a1" = a1, "a2" = a2, "a3" = a3, "a4" = a4, "a5" = a5, "a6" = a6, "a7" = a7, "a8" = a8)
+}
+
+params <- estimate_polynomial_model(single_counts, current_name, burnin = 10000, iterations = 15000)
+
+get_params_polynomial_without_recomputing <- function(name) {
+  if (name=="1 mês") {
+    return <- c("a1" = 2.337094e-01, "a2" = -4.464798e-04, "a3" = 5.476324e-07,
+                "a4" = 6.363453e-10, "a5" = -3.013744e-13, "a6" = -1.257045e-15,
+                "a7" = 3.043597e-19, "a8" = 3.719693e-22)
+  } else if (name=="3 meses") {
+    return <- c("a1" = 2.787911e-01, "a2" = -5.615346e-04, "a3" = 4.615044e-07,
+                "a4" = 4.550948e-11, "a5" = 2.282129e-12, "a6" = -4.103757e-15,
+                "a7" = 1.287408e-18, "a8" = 4.125076e-22)
+  } else if (name=="6 meses") {
+    return <- c("a1" = 2.667163e-01, "a2" = -7.248756e-04, "a3" = 1.196513e-06,
+                "a4" = -6.497687e-10, "a5" = 1.372134e-13, "a6" = 9.646609e-16,
+                "a7" = -1.732513e-18, "a8" = 5.446613e-22)
+  } else if (name=="12 meses") {
+    return <- c("a1" = 2.187535e-01, "a2" = -8.619306e-04, "a3" = 1.663590e-06,
+                "a4" = -5.464628e-10, "a5" = 3.288909e-13, "a6" = -1.371120e-15,
+                "a7" = 2.635840e-19, "a8" = 3.640027e-22)
+  }
+  return
+}
+
+params <- get_params_polynomial_without_recomputing(current_name)
+
+
+plot_data_and_mean_polynomial <- function(current_cumulative, params) {
+  a1 <- params["a1"]
+  a2 <- params["a2"]
+  a3 <- params["a3"]
+  a4 <- params["a4"]
+  a5 <- params["a5"]
+  a6 <- params["a6"]
+  a7 <- params["a7"]
+  a8 <- params["a8"]
+  mean_to_end <- function(t) { a1*t + a2*t^2 + a3*t^3 + a4*t^4 + a5*t^5 + a6*t^6 + a7*t^7 + a8*t^8}
+  mean_ext <- c()
+  for (i in 1:length(current_cumulative)) {
+    mean_ext <- c(mean_ext, mean_to_end(i))
+  }
+  plot(0,0,xlim = c(0,N), ylim = c(0, max(current_cumulative)), type = "n", main = "")
+  lines(stepfun(1:(length(current_cumulative)-1), current_cumulative),cex.points = 0.1, lwd=0, col = "#000000")
+  lines(stepfun(1:(length(mean_ext)-1),mean_ext), cex.points = 0.1, lwd=0, col = "#FF0000")
+}
+
+plot_data_and_mean_polynomial(current_cumulative, params)
+
 
 ############################# Plotting for report #######################
 
